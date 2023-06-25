@@ -55,6 +55,18 @@ pub struct PictrsConfig {
   #[doku(example = "http://localhost:8080")]
   pub url: Url,
 
+  /// Public pictrs URL (for image hosting)
+  /// After this is set, /pictrs/image/ url will return 307 to this url
+  #[default(None)]
+  #[doku(example = "https://image-cdn.example.com")]
+  pub public_url: Option<Url>,
+
+  /// Return CDN bypass URL for images (require patched pict_rs)
+  /// After this is set, /pictrs/image/ url will return 307 to CDN url
+  /// To be determined
+  #[default(false)]
+  pub direct_cdn: bool,
+
   /// Set a custom pictrs API key. ( Required for deleting images )
   #[default(None)]
   pub api_key: Option<String>,

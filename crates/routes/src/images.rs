@@ -9,6 +9,7 @@ use actix_web::{
   Error,
   HttpRequest,
   HttpResponse,
+  Responder,
 };
 use futures::stream::{Stream, StreamExt};
 use lemmy_api_common::{context::LemmyContext, utils::local_user_view_from_jwt};
@@ -147,15 +148,20 @@ async fn full_res(
 
   // If there are no query params, the URL is original
   let pictrs_config = context.settings().pictrs_config()?;
+  let (is_redirect, pictrs_url) = match pictrs_config.public_url {
+    Some(url) => (true, url),
+    None => (false, pictrs_config.url),
+  };
+
   let url = if params.format.is_none() && params.thumbnail.is_none() {
-    format!("{}image/original/{}", pictrs_config.url, name,)
+    format!("{}image/original/{}", pictrs_url, name,)
   } else {
     // Take file type from name, or jpg if nothing is given
     let format = params
       .format
       .unwrap_or_else(|| name.split('.').last().unwrap_or("jpg").to_string());
 
-    let mut url = format!("{}image/process.{}?src={}", pictrs_config.url, format, name,);
+    let mut url = format!("{}image/process.{}?src={}", pictrs_url, format, name,);
 
     if let Some(size) = params.thumbnail {
       url = format!("{url}&thumbnail={size}",);
@@ -163,7 +169,15 @@ async fn full_res(
     url
   };
 
-  image(url, req, client).await
+  if is_redirect {
+    Ok(
+      actix_web::web::Redirect::to(url)
+        .respond_to(&req)
+        .set_body(actix_web::body::BoxBody::new(""))
+    )
+  } else {
+    image(url, req, client).await
+  }
 }
 
 async fn image(
